@@ -6,4 +6,11 @@
 *.dSYM
 minimap2
 mappy.c
-data
+data/*.fa
+data/*.fq
+data/*.fasta
+data/*.fastq
+data/*.maf
+data/*.txt
+data/*.paf
+.vscode
