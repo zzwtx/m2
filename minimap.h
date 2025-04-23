@@ -4,8 +4,15 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include "weighted_m.hpp"
 
 #define MM_VERSION "2.28-r1221-dirty"
+
+// 定义加权时哈希值（0~1）求幂的指数
+const int wei_ind = 8;
+// minimap2支持的最大k-mer长度
+const int maxk = 28;
+const uint64_t maxk_mask = (1ull << maxk * 2) - 1;
 
 #define MM_F_NO_DIAG       (0x001LL) // no exact diagonal hit
 #define MM_F_NO_DUAL       (0x002LL) // skip pairs where query name is lexicographically larger than target name

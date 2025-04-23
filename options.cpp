@@ -15,7 +15,11 @@ void mm_mapopt_init(mm_mapopt_t *opt)
 {
 	memset(opt, 0, sizeof(mm_mapopt_t));
 	opt->seed = 11;
-	opt->mid_occ_frac = 2e-4f;
+
+	// 将自动过滤掉的Minimizer比例改为0
+	opt->mid_occ_frac = 0;
+
+	// opt->mid_occ_frac = 2e-4f;
 	opt->min_mid_occ = 10;
 	opt->max_mid_occ = 1000000;
 	opt->sdust_thres = 0; // no SDUST masking

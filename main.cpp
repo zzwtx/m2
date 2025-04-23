@@ -125,6 +125,9 @@ static inline void yes_or_no(mm_mapopt_t *opt, int64_t flag, int long_idx, const
 
 int main(int argc, char *argv[])
 {
+	// 将预处理得到的高频k-mer(默认长度15)读入map，以便后续查找
+	hf_ini();
+
 	const char *opt_str = "2aSDw:k:K:t:r:f:Vv:g:G:I:d:XT:s:x:Hcp:M:n:z:A:B:b:O:E:m:N:Qu:R:hF:LC:yYPo:e:U:J:";
 	ketopt_t o = KETOPT_INIT;
 	mm_mapopt_t opt;

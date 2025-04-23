@@ -6,6 +6,19 @@
 #include "kvec.h"
 #include "mmpriv.h"
 
+// 浮点数快速幂函数，以O(log(index))的时间复杂度求幂
+double fl_power(double base, int ind) {
+	double res = 1;
+	while (ind) {
+		if (ind & 1) {
+			res *= base; 
+		}
+		ind >>= 1;
+		base *= base;
+	}
+	return res;
+}
+
 unsigned char seq_nt4_table[256] = {
 	0, 1, 2, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
@@ -109,18 +122,31 @@ void mm_sketch(void *km, const char *str, int len, int w, int k, uint32_t rid, i
 			z = kmer[0] < kmer[1]? 0 : 1; // strand
 			++l;
 			if (l >= k && kmer_span < 256) {
-				info.x = hash64(kmer[z], mask) << 8 | kmer_span;
+				info.x = hash64(kmer[z], mask);
+
+				// 对高频率k-mer和独特性高的k-mer做区分处理。
+				if (hf_che(kmer[z]) == 1) {
+					double weival = double(mask - info.x) / (1ull << k * 2);
+					assert(weival <= 1 && weival >= 0);
+					weival = fl_power(weival, wei_ind);
+					info.x = weival * (1ull << maxk * 2);
+					info.x = maxk_mask - info.x;
+				} else {
+					info.x <<= (maxk - k) * 2;
+				}
+
+				info.x = info.x << 8 | kmer_span;
 				info.y = (uint64_t)rid<<32 | (uint32_t)i<<1 | z;
 			}
 		} else l = 0, tq.count = tq.front = 0, kmer_span = 0;
 		buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
-		if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
-			for (j = buf_pos + 1; j < w; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
-			for (j = 0; j < buf_pos; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
-		}
-		if (info.x <= min.x) { // a new minimum; then write the old min
+		// if (l == w + k - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
+		// 	for (j = buf_pos + 1; j < w; ++j)
+		// 		if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+		// 	for (j = 0; j < buf_pos; ++j)
+		// 		if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+		// }
+		if (info.x < min.x) { // a new minimum; then write the old min
 			if (l >= w + k && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
 			min = info, min_pos = buf_pos;
 		} else if (buf_pos == min_pos) { // old min has moved outside the window
@@ -129,12 +155,12 @@ void mm_sketch(void *km, const char *str, int len, int w, int k, uint32_t rid, i
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest k-mer
 			for (j = 0; j <= buf_pos; ++j)
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j;
-			if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
-				for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
-				for (j = 0; j <= buf_pos; ++j)
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
-			}
+			// if (l >= w + k - 1 && min.x != UINT64_MAX) { // write identical k-mers
+			// 	for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
+			// 		if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+			// 	for (j = 0; j <= buf_pos; ++j)
+			// 		if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+			// }
 		}
 		if (++buf_pos == w) buf_pos = 0;
 	}
